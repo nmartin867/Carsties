@@ -2,6 +2,7 @@ using AuctionService.Data;
 using AuctionService.DTOs;
 using AuctionService.Entities;
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,65 +10,57 @@ namespace AuctionService.Controllers;
 
 [ApiController]
 [Route("api/auctions")]
-public class AuctionController: ControllerBase
+public class AuctionController(AuctionDbContext context, IMapper mapper) : ControllerBase
 {
-    private readonly AuctionDbContext _context;
-    private readonly IMapper _mapper;
-
-    public AuctionController(AuctionDbContext context, IMapper mapper)
-    {
-        _mapper = mapper;
-        _context = context;
-    }
-
     [HttpGet]
-    public async Task<IActionResult> GetAllAuctions()
+    public async Task<IActionResult> GetAllAuctions(string date)
     {
-        var auctions = await _context.Auctions
-            .Include(x => x.Item)
-            .OrderBy(x => x.Item.Make)
-            .ThenBy(x => x.Item.Model)
-            .ToListAsync();
-        
-        return Ok(_mapper.Map<List<AuctionDto>>(auctions));
+        var query = context.Auctions.OrderBy(x => x.Item.Make).AsQueryable();
+
+        if (!string.IsNullOrEmpty(date))
+        {
+            query = query.Where(x => x.UpdatedAt.CompareTo(DateTime.Parse(date).ToUniversalTime()) > 0);
+        }
+
+        return Ok(await query.ProjectTo<AuctionDto>(mapper.ConfigurationProvider).ToListAsync());
     }
     
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetAuctionById(Guid id)
     {
-        var auction = await _context.Auctions
+        var auction = await context.Auctions
             .Include(x => x.Item)
             .FirstOrDefaultAsync(x => x.Id == id);
         
         if(auction == null) return NotFound();
         
-        return Ok(_mapper.Map<AuctionDto>(auction));
+        return Ok(mapper.Map<AuctionDto>(auction));
         
     }
 
     [HttpPost]
     public async Task<ActionResult<AuctionDto>> CreateAuction(CreateAuctionDto createAuctionDto)
     {
-        var auction = _mapper.Map<Auction>(createAuctionDto);
+        var auction = mapper.Map<Auction>(createAuctionDto);
 
         // TODO: Add current user as seller 
         auction.Seller = "test";
 
-        _context.Auctions.Add(auction);
+        context.Auctions.Add(auction);
 
-        var result = await _context.SaveChangesAsync() > 0;
+        var result = await context.SaveChangesAsync() > 0;
 
         if (!result) return BadRequest("Could not save changes to DB");
 
         return CreatedAtAction(nameof(GetAuctionById),
-            new { auction.Id }, _mapper.Map<AuctionDto>(auction));
+            new { auction.Id }, mapper.Map<AuctionDto>(auction));
     }
 
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult> UpdateAuction(Guid id, UpdateAuctionDto updateAuctionDto)
     {
-        var auction = await _context.Auctions.Include(x => x.Item)
+        var auction = await context.Auctions.Include(x => x.Item)
             .FirstOrDefaultAsync(x => x.Id == id);
         if(auction == null) return NotFound();
         
@@ -78,7 +71,7 @@ public class AuctionController: ControllerBase
         auction.Item.Color = updateAuctionDto.Color ?? auction.Item.Color;
         auction.Item.Mileage = updateAuctionDto.Mileage ?? auction.Item.Mileage;
         
-        var result = await _context.SaveChangesAsync() > 0;
+        var result = await context.SaveChangesAsync() > 0;
 
         if (result) return Ok();
         
@@ -88,13 +81,13 @@ public class AuctionController: ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> DeleteAuction(Guid id)
     {
-        var auction = await _context.Auctions.FindAsync(id);
+        var auction = await context.Auctions.FindAsync(id);
         
         if(auction == null) return NotFound();
 
-        _context.Auctions.Remove(auction);
+        context.Auctions.Remove(auction);
         
-        var result = await _context.SaveChangesAsync() > 0;
+        var result = await context.SaveChangesAsync() > 0;
         
         if (!result) return BadRequest("Could not save changes to DB");
 
