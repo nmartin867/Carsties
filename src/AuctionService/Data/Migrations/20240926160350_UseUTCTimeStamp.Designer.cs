@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace AuctionService.Data.Migrations
 {
-    [DbContext(typeof(AuctionDbContext))]
+    [DbContext(typeof(AuctionContext))]
     [Migration("20240926160350_UseUTCTimeStamp")]
     partial class UseUTCTimeStamp
     {

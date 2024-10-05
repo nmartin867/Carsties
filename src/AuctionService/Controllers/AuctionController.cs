@@ -2,27 +2,31 @@ using AuctionService.Data;
 using AuctionService.DTOs;
 using AuctionService.Entities;
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace AuctionService.Controllers;
 
 [ApiController]
 [Route("api/auctions")]
-public class AuctionController(AuctionDbContext context, IMapper mapper) : ControllerBase
+public class AuctionController(IAuctionRepository auctionRepository, IMapper mapper) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAllAuctions(string date)
+    public async Task<IActionResult> GetAllAuctions(string date = null)
     {
-        var query = context.Auctions.OrderBy(x => x.Item.Make).AsQueryable();
-
-        if (!string.IsNullOrEmpty(date))
+        
+        if (string.IsNullOrEmpty(date))
         {
-            query = query.Where(x => x.UpdatedAt.CompareTo(DateTime.Parse(date).ToUniversalTime()) > 0);
+           
         }
-
-        return Ok(await query.ProjectTo<AuctionDto>(mapper.ConfigurationProvider).ToListAsync());
+        // var query = context.Auctions.OrderBy(x => x.Item.Make).AsQueryable();
+        //
+        // if (!string.IsNullOrEmpty(date))
+        // {
+        //     query = query.Where(x => x.UpdatedAt.CompareTo(DateTime.Parse(date).ToUniversalTime()) > 0);
+        // }
+        //
+        // return Ok(await query.ProjectTo<AuctionDto>(mapper.ConfigurationProvider).ToListAsync());
     }
     
     [HttpGet("{id:guid}")]

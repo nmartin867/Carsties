@@ -9,11 +9,11 @@ public class DbInitializer
     {
         using var scope = app.Services.CreateScope();
         
-        SeedData(scope.ServiceProvider.GetService<AuctionDbContext>());
+        SeedData(scope.ServiceProvider.GetService<AuctionContext>());
         
     }
 
-    private static void SeedData(AuctionDbContext context)
+    private static void SeedData(AuctionContext context)
     {
         context.Database.Migrate();
         
